@@ -1,6 +1,10 @@
 //globals to store objects
 var canvas;
 var gl;
+var rotation = 0.0;
+var owidth;
+var oheight;
+var bFullscreen = false;
 
 //initialize canvas for rendering and setup opengl context
 function init()
@@ -22,6 +26,12 @@ function init()
         alert("opengl context not found");
         return;
     }
+
+    owidth = canvas.width;
+    oheight = canvas.height;
+    gl.viewport.width = owidth;
+    gl.viewport.height = oheight;
+
 
     //prepare shaders
     const vsSource = `
@@ -67,10 +77,22 @@ function init()
 
      //build all the data 
      const buffers = initBuffers();
+     var then = 0;
 
-     render(programInfo,buffers);
+     function render(now)
+     {
+        now *=0.001;
+        const deltaTime = now - then;
+        then = now;
 
-     
+        drawScene(programInfo,buffers,deltaTime);
+
+        requestAnimationFrame(render);
+     }
+
+     requestAnimationFrame(render);
+
+
     //Add listers for event driven window
     window.addEventListener("keydown",keyDown,false);
     window.addEventListener("click",mouseDown,false);
@@ -94,9 +116,9 @@ function initBuffers()
     //Note: here you can load the mesh data aswell !
 
     const positions = [
-        0.5, 0.5,
-        -0.5,-0.5,
-        0.5, -0.5,
+         0.0, 1.0,
+        -1.0, -1.0,
+         1.0, -1.0,
     ];
 
     //pass on to webgl
@@ -184,8 +206,8 @@ function keyDown(event)
         //Ascii for 'f'
         case 70:
         case 102:  
-
             toggleFullScreen();
+            
             break;
         case 21:
             document.exitFullscreen();
@@ -212,6 +234,7 @@ function toggleFullScreen()
     if(!document.fullscreenElement)
     {
         canvas.requestFullscreen().then({}).catch(err=>{alert('Error attempting to enable full-screen mode: ${err.message} ($err.name})')});
+        bFullscreen = true;
     }
     else
     {
@@ -219,6 +242,7 @@ function toggleFullScreen()
         if(document.exitFullscreen)
         {
             document.exitFullscreen();
+            bFullscreen = false;
         }
     }
 }
@@ -226,18 +250,31 @@ function toggleFullScreen()
 function resize()
 {
 
+    if(bFullscreen)
+    {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;    
+    }
+    else
+    {  
+        canvas.height = oheight;
+        canvas.width = owidth; 
+    }
+    
+    gl.viewport(0,0,canvas.width,canvas.height);
 }
+
 
 
 function main()
 {
    init();
-
-    return;
+   return;
 }
 
 
-function render(programInfo,buffers)
+
+function drawScene(programInfo,buffers,deltaTime)
 {
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -259,7 +296,8 @@ function render(programInfo,buffers)
     
     const modelViewMatrix = mat4.create();
 
-    mat4.translate(modelViewMatrix,modelViewMatrix,[0.0,0.0,-3.0]);
+    mat4.translate(modelViewMatrix,modelViewMatrix,[0.0,0.0,-6.0]);
+    mat4.rotate(modelViewMatrix,modelViewMatrix,rotation,[0,1,0]); //rotation along z-axis
 
     //specify how to access data from the buffer
     {
@@ -315,6 +353,8 @@ function render(programInfo,buffers)
         const vertexCount = 3;
         gl.drawArrays(gl.TRIANGLE_STRIP,offset,vertexCount);
     }
+
+    rotation += deltaTime;
 }
 
 
